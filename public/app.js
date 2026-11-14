@@ -2,9 +2,12 @@
 //   #/                 início (destaques das duas séries)
 //   #/serie-a          todas as notícias da Série A
 //   #/serie-a/flamengo notícias de um clube
+//   #/apito            matérias próprias do Apito
 
 const PAGE = 30;
 const HOME_COUNT = 7;
+const PIN_MS = 7 * 24 * 60 * 60 * 1000; // matéria própria fica no topo por 7 dias
+const PIN_MAX = 3;
 const REFETCH_MS = 5 * 60 * 1000;
 
 const app = document.getElementById('app');
@@ -12,6 +15,7 @@ const lnavTitle = document.getElementById('lnav-title');
 const sourceFilter = document.getElementById('source-filter');
 const sourceList = document.getElementById('source-list');
 const updated = document.getElementById('updated');
+const navApito = document.getElementById('nav-apito');
 const search = document.getElementById('search');
 
 const state = { data: null, error: null, source: 'all', q: '', limit: PAGE };
@@ -19,6 +23,7 @@ const state = { data: null, error: null, source: 'all', q: '', limit: PAGE };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fold = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const num = (n) => n.toLocaleString('pt-BR');
+const listPT = (names) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} e ${names.at(-1)}`);
 
 function ago(iso) {
   const min = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
@@ -30,7 +35,15 @@ function ago(iso) {
   return d === 1 ? 'ontem' : `há ${d} dias`;
 }
 
+let lastRoute = { series: null, club: null };
+
 function route() {
+  if (location.hash === '#fontes') return lastRoute; // âncora do rodapé: mantém a tela atual
+  return (lastRoute = parseRoute());
+}
+
+function parseRoute() {
+  if (/^#\/apito\b/.test(location.hash)) return { series: null, club: null, own: true };
   const [, s, club] = location.hash.match(/^#\/serie-([ab])(?:\/([a-z0-9-]+))?/) || [];
   return { series: s ? s.toUpperCase() : null, club: club || null };
 }
@@ -50,10 +63,28 @@ function select({ series, club, ignoreSource = false }) {
   );
 }
 
+// Matérias próprias no mesmo formato das notícias agregadas.
+function own({ series, club } = {}) {
+  const q = fold(state.q.trim());
+  return (state.data.articles || [])
+    .filter((a) => (!series || a.series.includes(series)) && (!club || a.clubs.includes(club)) && (!q || fold(a.title).includes(q)))
+    .map((a) => ({ ...a, own: true, source: 'apito', url: `/materia/${a.slug}` }));
+}
+
+// Junta matérias próprias e notícias: as próprias recentes vão para o topo.
+function merged(filter) {
+  const news = select(filter);
+  if (state.source !== 'all') return news;
+  const mine = own(filter);
+  const pinned = mine.filter((a) => Date.now() - Date.parse(a.publishedAt) < PIN_MS).slice(0, PIN_MAX);
+  const rest = [...mine.filter((a) => !pinned.includes(a)), ...news].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  return [...pinned, ...rest];
+}
+
 // ───────── peças ─────────
 
 function tile(item, featured = false) {
-  const src = sourceName(item.source);
+  const src = item.own ? 'Apito' : sourceName(item.source);
   const clubs = item.clubs.map((id) => clubById(id)?.short).filter(Boolean);
   const isNew = Date.now() - Date.parse(item.publishedAt) < 60 * 60 * 1000;
   const mono = esc((clubs[0] || src).slice(0, 3));
@@ -61,7 +92,7 @@ function tile(item, featured = false) {
     ? `<img src="${esc(item.image)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-mono="${mono}">`
     : `<span class="mono">${mono}</span>`;
   return `
-    <a class="tile${featured ? ' featured' : ''}" href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">
+    <a class="tile${featured ? ' featured' : ''}${item.own ? ' own' : ''}" href="${esc(item.url)}"${item.own ? '' : ' target="_blank" rel="noopener noreferrer"'}>
       <div class="tile-media">${media}</div>
       <div class="tile-body">
         <div class="tile-meta">
@@ -73,7 +104,7 @@ function tile(item, featured = false) {
         ${item.summary ? `<p>${esc(item.summary)}</p>` : ''}
         <div class="tile-foot">
           <span class="tile-clubs">${esc(clubs.join(' · ') || 'Geral')}</span>
-          <span class="pill">Ler no ${esc(src)}</span>
+          <span class="pill">${item.own ? 'Ler matéria' : `Ler no ${esc(src)}`}</span>
         </div>
       </div>
     </a>`;
@@ -113,7 +144,7 @@ function home() {
   const total = state.data.items.length;
   const sections = ['A', 'B']
     .map((s) => {
-      const items = select({ series: s });
+      const items = merged({ series: s });
       return `
       <section class="section">
         <div class="wrap">
@@ -131,12 +162,29 @@ function home() {
     })
     .join('');
 
+  const mine = own();
+  const ownSection = mine.length
+    ? `
+      <section class="section">
+        <div class="wrap">
+          <div class="section-head">
+            <div>
+              <h2>Do Apito.</h2>
+              <p class="section-count">Matérias e análises da casa</p>
+            </div>
+            ${mine.length > 4 ? '<a class="pill lg" href="#/apito">Ver todas as matérias</a>' : ''}
+          </div>
+          ${grid(mine.slice(0, 4))}
+        </div>
+      </section>`
+    : '';
+
   return `
     <section class="hero">
       <div class="wrap">
         <p class="lockup">Brasileirão 2026</p>
         <h1>Tudo do seu clube. Um só lugar.</h1>
-        <p class="hero-sub">As manchetes de ge, Lance!, ESPN, Gazeta Esportiva e Bolavip, separadas por série e por clube.</p>
+        <p class="hero-sub">As manchetes de ${esc(listPT(state.data.sources.map((s) => s.name)))}, separadas por série e por clube.</p>
         <ul class="metrics">
           <li class="live"><b>${num(total)}</b><span>notícias agora</span></li>
           <li><b>${state.data.clubs.length}</b><span>clubes</span></li>
@@ -148,6 +196,7 @@ function home() {
         </div>
       </div>
     </section>
+    ${ownSection}
     ${sections}`;
 }
 
@@ -156,7 +205,7 @@ function listing({ series, club }) {
   if (club && (!c || c.series !== series)) {
     return `<section class="state"><h2>Clube não encontrado.</h2><p><a class="pill lg" href="${seriesPath(series)}">Voltar à Série ${series}</a></p></section>`;
   }
-  const items = select({ series, club });
+  const items = merged({ series, club });
   const shown = items.slice(0, state.limit);
   return `
     <section class="section">
@@ -175,11 +224,32 @@ function listing({ series, club }) {
     </section>`;
 }
 
+function ownListing() {
+  const items = own();
+  const shown = items.slice(0, state.limit);
+  return `
+    <section class="section">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <a class="crumb" href="#/">‹ Início</a>
+            <h2>Do Apito.</h2>
+            <p class="section-count"><b>${num(items.length)}</b> ${items.length === 1 ? 'matéria' : 'matérias'}</p>
+          </div>
+        </div>
+        ${grid(shown)}
+        ${items.length > shown.length ? `<div class="more"><button class="pill lg" id="more">Mostrar mais ${Math.min(PAGE, items.length - shown.length)}</button></div>` : ''}
+      </div>
+    </section>`;
+}
+
 function renderChrome(r) {
   const c = r.club && clubById(r.club);
-  lnavTitle.textContent = c ? c.name : r.series ? `Série ${r.series}` : 'Brasileirão';
-  lnavTitle.href = r.series ? seriesPath(r.series) : '#/';
-  document.title = `${c ? c.name : r.series ? `Série ${r.series}` : 'Brasileirão Séries A e B'} — Apito`;
+  lnavTitle.textContent = r.own ? 'Do Apito' : c ? c.name : r.series ? `Série ${r.series}` : 'Brasileirão';
+  lnavTitle.href = r.own ? '#/apito' : r.series ? seriesPath(r.series) : '#/';
+  document.title = `${r.own ? 'Do Apito' : c ? c.name : r.series ? `Série ${r.series}` : 'Brasileirão Séries A e B'} — Apito`;
+  navApito.hidden = !(state.data.articles || []).length;
+  sourceFilter.hidden = Boolean(r.own);
 
   const options = [{ id: 'all', name: 'Todas as fontes' }, ...state.data.sources];
   sourceFilter.innerHTML = options
@@ -210,7 +280,7 @@ function render() {
   }
   const r = route();
   renderChrome(r);
-  app.innerHTML = r.series ? listing(r) : home();
+  app.innerHTML = r.own ? ownListing() : r.series ? listing(r) : home();
 }
 
 // ───────── eventos ─────────

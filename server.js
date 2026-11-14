@@ -11,6 +11,7 @@ const crypto = require('node:crypto');
 const { CLUBS } = require('./src/clubs');
 const { SOURCES, FETCHERS } = require('./src/sources');
 const { classify } = require('./src/classify');
+const { loadArticles, renderArticlePage, renderNotFound, renderSitemap } = require('./src/articles');
 
 const PORT = Number(process.env.PORT) || 3000;
 const REFRESH_MS = 10 * 60 * 1000;
@@ -29,13 +30,14 @@ const SECURITY_HEADERS = {
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Content-Security-Policy':
-    "default-src 'self'; img-src https: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    "default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
 };
 
 const store = new Map(); // url -> item
 const status = {}; // fonte -> { ok, count, error, at }
 let updatedAt = null;
 let refreshing = null;
+let articles = loadArticles(); // matérias próprias, lidas de /materias
 
 function load() {
   try {
@@ -103,6 +105,7 @@ function refresh() {
     .then(() => {
       prune();
       updatedAt = new Date().toISOString();
+      articles = loadArticles();
       cached = null;
       save();
     })
@@ -115,6 +118,7 @@ function payload() {
     updatedAt,
     sources: Object.entries(SOURCES).map(([id, s]) => ({ id, ...s, status: status[id] || null })),
     clubs: CLUBS.map(({ id, name, short, series, color }) => ({ id, name, short: short || name, series, color })),
+    articles: articles.map(({ html, ...rest }) => rest),
     items: [...store.values()].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)),
   };
 }
@@ -165,6 +169,22 @@ const server = http.createServer(async (req, res) => {
       if (req.headers['if-none-match'] === api.etag) return send(req, res, 304, headers);
       if (gzipOk) return send(req, res, 200, { ...headers, 'Content-Encoding': 'gzip' }, api.gzip);
       return send(req, res, 200, headers, api.json);
+    }
+
+    const host = /^[a-z0-9.:-]+$/i.test(req.headers.host || '') ? req.headers.host : 'localhost';
+    const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+    const baseUrl = `${proto}://${host}`;
+    const HTML = { 'Content-Type': MIME['.html'], 'Cache-Control': 'public, max-age=300' };
+
+    const materia = pathname.match(/^\/materia\/([a-z0-9-]+)\/?$/);
+    if (materia) {
+      const article = articles.find((a) => a.slug === materia[1]);
+      if (!article) return send(req, res, 404, HTML, renderNotFound());
+      return send(req, res, 200, HTML, renderArticlePage(article, baseUrl));
+    }
+
+    if (pathname === '/sitemap.xml') {
+      return send(req, res, 200, { 'Content-Type': 'application/xml; charset=utf-8' }, renderSitemap(articles, baseUrl));
     }
 
     const rel = pathname === '/' ? 'index.html' : decodeURIComponent(pathname).replace(/^\/+/, '');

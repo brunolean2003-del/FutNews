@@ -31,8 +31,9 @@ for (const club of CLUBS) {
   }
 }
 
-function classify({ title, url, categories = [], seriesHint = null }) {
+function classify({ title, url, categories = [], seriesHint = null, clubHint = null }) {
   const clubs = new Set();
+  if (clubHint && byId.has(clubHint)) clubs.add(clubHint);
 
   try {
     for (const seg of new URL(url).pathname.split('/')) {
@@ -56,4 +57,7 @@ function classify({ title, url, categories = [], seriesHint = null }) {
   return { clubs: [...clubs], series: [...series].sort() };
 }
 
-module.exports = { classify, norm };
+// Converte um nome digitado ("Flamengo", "atlético-mg") no id do clube.
+const resolveClub = (name) => byAlias.get(norm(name)) || null;
+
+module.exports = { classify, norm, resolveClub };

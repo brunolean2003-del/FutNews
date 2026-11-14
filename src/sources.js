@@ -1,5 +1,7 @@
 // Coleta das cinco fontes. Cada coletor devolve itens "crus":
-//   { source, title, summary, url, image, publishedAt, categories, seriesHint }
+//   { source, title, summary, url, image, publishedAt, categories, seriesHint, clubHint }
+// seriesHint: série do feed, usada quando nenhum clube é reconhecido.
+// clubHint: clube fixo, para sites dedicados a um único clube.
 // Guardamos só manchete, resumo curto, miniatura e link — a leitura é sempre na fonte.
 
 const { CLUBS } = require('./clubs');
@@ -13,6 +15,7 @@ const SOURCES = {
   espn: { name: 'ESPN', site: 'https://www.espn.com.br' },
   gazeta: { name: 'Gazeta Esportiva', site: 'https://www.gazetaesportiva.com' },
   bolavip: { name: 'Bolavip', site: 'https://br.bolavip.com' },
+  nossopalestra: { name: 'Nosso Palestra', site: 'https://nossopalestra.com.br' },
 };
 
 // ───────────── utilidades ─────────────
@@ -208,6 +211,35 @@ async function fetchBolavip() {
   });
 }
 
-const FETCHERS = { ge: fetchGe, lance: fetchLance, espn: fetchEspn, gazeta: fetchGazeta, bolavip: fetchBolavip };
+// ───────────── Nosso Palestra ─────────────
+// Site dedicado ao Palmeiras: tudo é marcado como Palmeiras, mesmo sem o nome no título.
+
+async function fetchNossoPalestra() {
+  const xml = await get('https://nossopalestra.com.br/feed/');
+  return rssItems(xml).map((it) => {
+    const desc = cdata(tag(it, 'description'));
+    return {
+      source: 'nossopalestra',
+      title: text(tag(it, 'title')),
+      // O resumo é o primeiro parágrafo; o que vem antes é a legenda da foto.
+      summary: clip(text(tag(desc, 'p')).split(/\s*O post /)[0]),
+      url: text(tag(it, 'link')),
+      image: attr(it, 'enclosure', 'url') || attr(desc, 'img', 'src'),
+      publishedAt: toISO(tag(it, 'pubDate')),
+      categories: [],
+      seriesHint: null,
+      clubHint: 'palmeiras',
+    };
+  });
+}
+
+const FETCHERS = {
+  ge: fetchGe,
+  lance: fetchLance,
+  espn: fetchEspn,
+  gazeta: fetchGazeta,
+  bolavip: fetchBolavip,
+  nossopalestra: fetchNossoPalestra,
+};
 
 module.exports = { SOURCES, FETCHERS };

@@ -1,7 +1,7 @@
 # Apito
 
 Agregador de notícias das Séries A e B do Campeonato Brasileiro. Reúne manchetes de
-ge, Lance!, ESPN, Gazeta Esportiva e Bolavip e organiza por série e por clube.
+ge, Lance!, ESPN, Gazeta Esportiva, Bolavip e Nosso Palestra e organiza por série e por clube.
 Cada notícia leva ao site de origem.
 
 ## Rodar localmente
@@ -22,9 +22,36 @@ Abra http://localhost:3000.
 | `src/sources.js` | Leitura de cada fonte (RSS, sitemap ou API) |
 | `src/clubs.js` | Lista dos 40 clubes e as regras para reconhecê-los |
 | `src/classify.js` | Decide série e clube de cada notícia |
+| `src/articles.js` | Lê as matérias próprias e monta a página de cada uma |
+| `materias/` | Matérias próprias, um arquivo por matéria |
 | `public/` | Interface (HTML, CSS e JS puros) |
 
 Na virada da temporada, mova os clubes entre as séries em `src/clubs.js`.
+
+## Matérias próprias
+
+Cada arquivo `.md` na pasta `materias/` vira uma página em `/materia/<nome-do-arquivo>`,
+aparece na seção "Do Apito" do início e no topo da página dos clubes citados (por 7 dias).
+
+1. Copie `materias/_modelo.md` e dê um nome em minúsculas, sem acentos, com hífens
+   (ex.: `flamengo-vence-o-classico.md`). O nome vira o endereço da matéria.
+2. Preencha o cabeçalho e escreva o texto abaixo da linha `---`.
+3. Envie ao GitHub (`git add`, `git commit`, `git push`). O site atualiza sozinho.
+
+| Campo | Obrigatório | Uso |
+|---|---|---|
+| `titulo` | sim | Título da matéria |
+| `data` | não | `2026-11-14` ou `2026-11-14 18:30` (horário de Brasília) |
+| `clubes` | não | Clubes citados, separados por vírgula (`flamengo, vasco`) |
+| `serie` | não | `A` ou `B`, para matéria da série sem clube específico |
+| `resumo` | não | Frase do cartão; se faltar, usa o começo do texto |
+| `autor` | não | Assinatura; padrão "Redação Apito" |
+| `imagem` | não | Endereço `https://…` ou arquivo em `public/` (ex.: `/imagens/foto.jpg`) |
+| `rascunho` | não | `sim` deixa a matéria fora do ar |
+
+No texto: parágrafos separados por linha em branco, `## Subtítulo`, `**negrito**`,
+`*itálico*`, `[link](https://…)`, listas com `- ` e citações com `> `.
+Arquivos que começam com `_` são ignorados. Use só imagens suas ou com licença de uso.
 
 ## Variáveis de ambiente
 

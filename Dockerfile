@@ -5,6 +5,7 @@ ENV NODE_ENV=production PORT=3000
 COPY package.json server.js ./
 COPY src ./src
 COPY public ./public
+COPY materias ./materias
 RUN mkdir -p data && chown -R node:node /app
 USER node
 EXPOSE 3000
