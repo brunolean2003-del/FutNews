@@ -1,0 +1,14 @@
+{
+  "name": "apito-agregador-futebol",
+  "version": "1.0.0",
+  "description": "Agregador de notícias das Séries A e B do Campeonato Brasileiro",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

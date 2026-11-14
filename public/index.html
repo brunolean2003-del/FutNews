@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#111111">
+  <meta name="description" content="Apito: as notícias das Séries A e B do Brasileirão, de ge, Lance!, ESPN, Gazeta Esportiva e Bolavip, organizadas por clube.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="Apito — Brasileirão Séries A e B">
+  <meta property="og:description" content="As notícias das Séries A e B do Brasileirão, de cinco veículos, organizadas por clube.">
+  <title>Apito — Brasileirão Séries A e B</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23000'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23f5f5f7' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="gnav">
+    <div class="wrap gnav-inner">
+      <a class="brand" href="#/" aria-label="Apito — início">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        Apito
+      </a>
+      <nav class="gnav-links" aria-label="Navegação principal">
+        <a href="#/">Início</a>
+        <a href="#/serie-a">Série A</a>
+        <a href="#/serie-b">Série B</a>
+        <a href="#fontes">Fontes</a>
+      </nav>
+      <span class="gnav-status" id="updated" aria-live="polite"></span>
+    </div>
+  </header>
+
+  <nav class="lnav" aria-label="Filtros">
+    <div class="wrap lnav-inner">
+      <a class="lnav-title" id="lnav-title" href="#/">Brasileirão</a>
+      <div class="lnav-sources" id="source-filter" role="group" aria-label="Filtrar por fonte"></div>
+      <label class="search">
+        <span class="sr-only">Buscar nas manchetes</span>
+        <input id="search" type="search" placeholder="Buscar" autocomplete="off">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </label>
+    </div>
+  </nav>
+
+  <main id="app">
+    <section class="state"><p>Buscando as notícias nas fontes…</p></section>
+  </main>
+
+  <footer class="footer" id="fontes">
+    <div class="wrap">
+      <div class="info-tile">
+        <h2>De onde vêm as notícias.</h2>
+        <p class="info-lead">O Apito reúne manchetes de cinco veículos e organiza por série e por clube. A leitura é sempre no site de origem.</p>
+        <ul class="source-list" id="source-list"></ul>
+      </div>
+      <p class="legal">Manchetes, imagens e resumos pertencem aos respectivos veículos. Atualização automática a cada 10 minutos.</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Blueprint do Render (https://render.com): cria o serviço a partir do repositório.
+services:
+  - type: web
+    name: apito
+    runtime: node
+    plan: free
+    region: virginia
+    buildCommand: "true" # sem dependências para instalar
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
